@@ -1,8 +1,8 @@
 library(Seurat)
 library(scRepertoire)
 library(readxl)
-
-Tcell <- readRDS("C:/study/eye/2022.4/Tcell0603.rds")
+library(ggplot2)
+Tcell <- readRDS("C:/study/eye/2023.3/newest/Tcell.rds")
 ##highlight clonotype
 Tcell$highlight<-as.numeric(substr(Tcell$highlight,10,11)) #let the number be sorted in the right order.
 table(Tcell$highlight,Tcell$file)
@@ -10,32 +10,15 @@ table(Tcell$highlight,Tcell$file)
 Seurat::DimPlot(Tcell, split.by = "highlight",ncol = 4,label = T,label.size = 2.5)
 
 
-"""
-BD1 VKH1 VKH2
-1    0  243    0
-2    0    0  230
-3    0   96    0
-4    0    0   82
-5    0    0   80
-6    0    0   75
-7    0    0   73
-8    0    0   68
-9    0    0   62
-10  61    0    0
-11   0   58    0
-12   0    0   57
-13  57    0    0
-14   0   54    0
-15   0    0   52
-16   0   49    0
-"""
-
-UMAPPlot(Tcell,split.by="CloneType")
+table(Tcell$cloneType,Idents(Tcell),Tcell$Patient)
+table(Tcell$cloneType,Idents(Tcell),Tcell$Disease)
 
 #########
-pdf("C:/study/eye/2022.7/figure/Fig3/3a-UMAP clonotype level.pdf",15,3)
-UMAPPlot(`Tcell-4groupclonetypes`,split.by="cloneType",label=T)
-dev.off()
+#pdf("C:/study/eye/2022.7/figure/Fig3/3a-UMAP clonotype level.pdf",15,3)
+#UMAPPlot(Tcell,group.by="cloneType",label=T)
+Idents(Tcell)<-Tcell$subclusterCD8
+UMAPPlot(Tcell,split.by="cloneType",label=T)
+#dev.off()
 
 
 clonalOverlay(Tcell0616withcongaclusters, reduction = "umap", 
@@ -48,3 +31,24 @@ clonalOverlay(Tcell0616withcongaclusters, reduction = "umap",
   guides(color = FALSE)
 
 
+####draw clonoindex plot
+clonoindex<-read.csv("clonoindex.csv")
+rownames(clonoindex) <- clonoindex$X
+clonoindex$X <- NULL
+cols2=as.matrix(cols)
+rownames(cols2)=paste0("C",rownames(as.matrix(cols2)))
+
+clonoindex2 <- data.frame(clonotype=factor(rep(c("rare","moderate","large"),ncol(clonoindex)*2),levels=c("rare","moderate","large")),disease=rep(c("VKHD","BD"),each =ncol(clonoindex)*3),
+                          cluster=factor(rep(c(colnames(clonoindex),colnames(clonoindex)),each=nrow(clonoindex)/2),levels = rownames(as.matrix(cols2))),
+                          index=unlist(clonoindex))
+
+clonoindex2 <- data.frame(clonotype=factor(rep(c("rare","moderate","large"),ncol(clonoindex)*2),levels=c("rare","moderate","large")),disease=rep(c("VKHD","VKHD","VKHD","BD","BD","BD"),ncol(clonoindex)),
+                          cluster=factor(rep(c(colnames(clonoindex)),each=nrow(clonoindex)),levels = rownames(as.matrix(cols2))),
+                          index=unlist(clonoindex))
+ggplot(clonoindex2, aes(x =clonotype , y = index, color = cluster, group = cluster)) + 
+  geom_point() + geom_line() + 
+  facet_grid(~ disease)+ scale_colour_manual(values = cols2)
+
+
+clonalOverlay(CD4,reduction = "umap",freq.cutpoint = 0.005, bins = 10)+ scale_colour_manual(values = cols)|
+  clonalOverlay(CD8,reduction = "umap",freq.cutpoint = 0.005, bins =10)+ scale_colour_manual(values = cols)
